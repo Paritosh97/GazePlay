@@ -34,7 +34,7 @@ import static net.gazeplay.ui.QuickControl.*;
 @RequiredArgsConstructor
 public class MusicControl {
 
-    private static final String RESOURCES_PATH = "data" + "/" + "common";
+    private static final String RESOURCES_PATH = "data/common";
 
     private static final String IMAGES_PATH = RESOURCES_PATH + "/" + "images";
 
@@ -75,16 +75,16 @@ public class MusicControl {
     private static final String MUTE_ICON = IMAGES_PATH + "/" + "mute.png";
 
     /**
-     * Field used to know if the background music controler has already been built once. This is used to get audio and
+     * Field used to know if the background music controller has already been built once. This is used to get audio and
      * play it at the beginning.
      */
-    private static AtomicBoolean autoplayExecuted = new AtomicBoolean(false);
+    private static final AtomicBoolean autoplayExecuted = new AtomicBoolean(false);
 
     @Getter
     private final GazePlay gazePlay;
 
     /**
-     * Fields with listeners from music controler. When need those because when the volume controle is not on stage
+     * Fields with listeners from music controller. When need those because when the volume control is not on stage
      * (i.e. when configuration is shown), it doesn't receive any event from listener (no idea why). Then when it comes
      * back on stage, it needs to be updated.
      */
@@ -96,7 +96,7 @@ public class MusicControl {
 
     private double beforeMutedValue;
 
-    public void updateMusicControler() {
+    public void updateMusicController() {
         setMusicTitle(musicName);
         if (playButton != null && pauseButton != null) {
             final BackgroundMusicManager backgroundMusicManager = BackgroundMusicManager.getInstance();
@@ -111,7 +111,7 @@ public class MusicControl {
         }
     }
 
-    public TitledPane createMusicControlPane(Configuration config) {
+    public TitledPane createMusicControlPane() {
 
         final BackgroundMusicManager backgroundMusicManager = BackgroundMusicManager.getInstance();
 
@@ -122,14 +122,14 @@ public class MusicControl {
 
         backgroundMusicManager.getIsMusicChanging().addListener((observable, oldValue, newValue) -> {
 
-            // If we receive a change event and the new value is fales, then it means
+            // If we receive a change event and the new value is false, then it means
             // that the music has been changed (see changingProperty from Slider)
             if (!newValue) {
                 setMusicTitle(musicName);
             }
         });
 
-        Button previousButton = createButton("<", PREVIOUS_ICON, "previous", ICON_SIZE / 2d);
+        final Button previousButton = createButton("<", PREVIOUS_ICON, "previous", ICON_SIZE / 2d);
         previousButton.setOnAction((event) -> backgroundMusicManager.previous());
 
         pauseButton = createButton("||", PAUSE_ICON, "pause");
@@ -146,7 +146,7 @@ public class MusicControl {
             pauseButton.setVisible(false);
         }
 
-        Button nextButton = createButton(">", NEXT_ICON, "next", ICON_SIZE / 2d);
+        final Button nextButton = createButton(">", NEXT_ICON, "next", ICON_SIZE / 2d);
         nextButton.setOnAction((event) -> backgroundMusicManager.next());
 
         backgroundMusicManager.getIsPlayingProperty().addListener((observable) -> {
@@ -162,19 +162,19 @@ public class MusicControl {
         final StackPane stackPane = new StackPane(pauseButton, playButton);
 
 
-        HBox line1 = new HBox();
+        final HBox line1 = new HBox();
         line1.setSpacing(CONTENT_SPACING);
         line1.setAlignment(Pos.CENTER);
         line1.getChildren().add(musicName);
 
-        HBox line2 = new HBox();
+        final HBox line2 = new HBox();
         line2.setSpacing(CONTENT_SPACING);
         line2.setAlignment(Pos.CENTER);
         line2.getChildren().add(previousButton);
         line2.getChildren().add(stackPane);
         line2.getChildren().add(nextButton);
 
-        VBox content = new VBox();
+        final VBox content = new VBox();
         content.setAlignment(Pos.CENTER);
         content.setSpacing(CONTENT_SPACING);
         content.getChildren().addAll(line1, line2);
@@ -192,25 +192,25 @@ public class MusicControl {
             setMusicTitle(musicName);
         }
 
-        I18NTitledPane pane = new I18NTitledPane(getGazePlay().getTranslator(), "Music");
+        final I18NTitledPane pane = new I18NTitledPane(getGazePlay().getTranslator(), "Music");
         pane.setCollapsible(false);
         pane.setContent(content);
         return pane;
     }
 
-    private Button createButton(@NonNull final String altText, @NonNull final String imagePath, @NonNull String toolTip) {
+    private Button createButton(@NonNull final String altText, @NonNull final String imagePath, @NonNull final String toolTip) {
         return createButton(altText, imagePath, toolTip, ICON_SIZE);
     }
 
-    private Button createButton(@NonNull final String altText, @NonNull final String imagePath, @NonNull String toolTip, final double imageSize) {
+    private Button createButton(@NonNull final String altText, @NonNull final String imagePath, @NonNull final String toolTip, final double imageSize) {
         Image image;
         try {
             image = new Image(imagePath, imageSize, imageSize, true, true);
-        } catch (IllegalArgumentException e) {
+        } catch (final IllegalArgumentException e) {
             log.warn("Failed to load image with path {}", imagePath);
             image = null;
         }
-        Button button;
+        final Button button;
         if (image == null) {
             button = new Button(altText);
         } else {
@@ -225,7 +225,7 @@ public class MusicControl {
         //        "-fx-max-height: 3px;"
         //);
 
-        double r = imageSize * 1.0d / 2d;
+        final double r = imageSize * 1.0d / 2d;
         button.setShape(new Circle(r));
         button.setMinSize(2 * r, 2 * r);
         button.setMaxSize(2 * r, 2 * r);
@@ -237,7 +237,7 @@ public class MusicControl {
         return button;
     }
 
-    private void setUpSwitchButton(Button button) {
+    private void setUpSwitchButton(final Button button) {
         button.setPrefWidth(ICON_SIZE * 0.5d);
         button.setPrefHeight(ICON_SIZE * 0.5d);
 
@@ -248,9 +248,9 @@ public class MusicControl {
         button.setMaxHeight(ICON_SIZE * 0.5d);
     }
 
-    private Node createMuteSwitchButton(final Slider volumeSlider) {
-        Button muteButton = createButton("mute", SPEAKER_ICON, "mute", ICON_SIZE / 2d);
-        Button unmuteButton = createButton("unmute", MUTE_ICON, "unmute", ICON_SIZE / 2d);
+    Node createMuteSwitchButton(final Slider volumeSlider) {
+        final Button muteButton = createButton("mute", SPEAKER_ICON, "mute", ICON_SIZE / 2d);
+        final Button unmuteButton = createButton("unmute", MUTE_ICON, "unmute", ICON_SIZE / 2d);
 
         setUpSwitchButton(muteButton);
         setUpSwitchButton(unmuteButton);
@@ -281,56 +281,59 @@ public class MusicControl {
         return new StackPane(muteButton, unmuteButton);
     }
 
-    private Slider createMediaVolumeSlider(Configuration config) {
-        Slider slider = QuickControl.getInstance().createVolumeSlider();
-        slider.setValue(config.getMusicVolume());
-        config.getMusicVolumeProperty().bindBidirectional(slider.valueProperty());
+    private Slider createMediaVolumeSlider(final Configuration config) {
+        final Slider slider = QuickControl.getInstance().createVolumeSlider();
+        slider.setValue(config.getMusicVolumeProperty().getValue());
+        slider.valueProperty().bindBidirectional(config.getMusicVolumeProperty());
+        slider.valueProperty().addListener((observable, oldValue, newValue) -> {
+            BackgroundMusicManager.getInstance().setVolume(newValue.doubleValue());
+        });
         return slider;
     }
 
-    private Slider createEffectsVolumeSlider(Configuration config) {
-        Slider slider = QuickControl.getInstance().createVolumeSlider();
-        slider.setValue(config.getEffectsVolume());
-        config.getEffectsVolumeProperty().bindBidirectional(slider.valueProperty());
+    private Slider createEffectsVolumeSlider(final Configuration config) {
+        final Slider slider = QuickControl.getInstance().createVolumeSlider();
+        slider.setValue(config.getEffectsVolumeProperty().getValue());
+        slider.valueProperty().bindBidirectional(config.getEffectsVolumeProperty());
         return slider;
     }
 
-    public TitledPane createVolumeLevelControlPane(Configuration config, Translator translator) {
+    public TitledPane createVolumeLevelControlPane(final Configuration config, final Translator translator) {
         final Slider mediaVolumeSlider = createMediaVolumeSlider(config);
         final Node mediaMuteSwitchButton = createMuteSwitchButton(mediaVolumeSlider);
 
         final Slider effectsVolumeSlider = createEffectsVolumeSlider(config);
         final Node effectsMuteSwitchButton = createMuteSwitchButton(effectsVolumeSlider);
 
-        HBox line1 = new HBox();
+        final HBox line1 = new HBox();
         {
             line1.setSpacing(CONTENT_SPACING);
             line1.setAlignment(Pos.CENTER);
-            I18NLabel label = new I18NLabel(translator, "Music");
+            final I18NLabel label = new I18NLabel(translator, "Music");
             label.setMinWidth(ICON_SIZE * 1d);
             line1.getChildren().add(label);
             line1.getChildren().add(mediaMuteSwitchButton);
             line1.getChildren().add(mediaVolumeSlider);
         }
 
-        HBox line2 = new HBox();
+        final HBox line2 = new HBox();
         {
             line2.setSpacing(CONTENT_SPACING);
             line2.setAlignment(Pos.CENTER);
-            I18NLabel label = new I18NLabel(translator, "Effects");
+            final I18NLabel label = new I18NLabel(translator, "Effects");
             label.setMinWidth(ICON_SIZE * 1d);
             line2.getChildren().add(label);
             line2.getChildren().add(effectsMuteSwitchButton);
             line2.getChildren().add(effectsVolumeSlider);
         }
 
-        VBox content = new VBox();
+        final VBox content = new VBox();
         content.setAlignment(Pos.CENTER);
         content.setSpacing(CONTENT_SPACING);
         content.getChildren().addAll(line1, line2);
         content.setPrefHeight(PREF_HEIGHT);
 
-        I18NTitledPane pane = new I18NTitledPane(getGazePlay().getTranslator(), "Sound Volume");
+        final I18NTitledPane pane = new I18NTitledPane(getGazePlay().getTranslator(), "Sound Volume");
         pane.setCollapsible(false);
         pane.setContent(content);
         return pane;
@@ -339,7 +342,7 @@ public class MusicControl {
     private void setMusicTitle(final MarqueeText musicLabel) {
         if (musicLabel != null) {
             final BackgroundMusicManager backgroundMusicManager = BackgroundMusicManager.getInstance();
-            String musicTitle = BackgroundMusicManager.getMusicTitle(backgroundMusicManager.getCurrentMusic());
+            final String musicTitle = BackgroundMusicManager.getMusicTitle(backgroundMusicManager.getCurrentMusic());
             musicLabel.getTextProperty().setValue(musicTitle);
         }
     }

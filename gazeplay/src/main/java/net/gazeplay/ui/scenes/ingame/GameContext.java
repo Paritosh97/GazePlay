@@ -4,6 +4,7 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
+import javafx.geometry.Dimension2D;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Node;
@@ -40,6 +41,7 @@ import net.gazeplay.ui.MusicControl;
 import net.gazeplay.ui.scenes.stats.StatsContext;
 
 import java.io.IOException;
+import java.util.function.Supplier;
 
 @Slf4j
 public class GameContext extends GraphicalContext<Pane> implements IGameContext {
@@ -76,6 +78,8 @@ public class GameContext extends GraphicalContext<Pane> implements IGameContext 
 
     private final Pane gamingRoot;
 
+    private VideoRecordingContext videoRecordingContext;
+
     protected GameContext(
         @NonNull GazePlay gazePlay,
         @NonNull Translator translator,
@@ -96,7 +100,12 @@ public class GameContext extends GraphicalContext<Pane> implements IGameContext 
 
         this.gamePanelDimensionProvider = new GamePanelDimensionProvider(() -> root, gazePlay::getPrimaryScene);
         this.randomPositionGenerator = new RandomPanePositionGenerator(gamePanelDimensionProvider);
+
+        if (this.getConfiguration().isVideoRecordingEnabled()) {
+            videoRecordingContext = new VideoRecordingContext(root, this);
+        }
     }
+
 
     @Override
     public void setUpOnStage(final Scene scene) {
@@ -112,25 +121,25 @@ public class GameContext extends GraphicalContext<Pane> implements IGameContext 
         // rootBorderPane.setBottom(bottomPane);
     }
 
+    @Override
+    public Supplier<Dimension2D> getCurrentScreenDimensionSupplier() {
+        return getGazePlay().getCurrentScreenDimensionSupplier();
+    }
+
     public void createQuitShortcut(@NonNull GazePlay gazePlay, @NonNull Stats stats, GameLifeCycle currentGame) {
         Configuration config = ActiveConfigurationContext.getInstance();
         final Scene scene = gazePlay.getPrimaryScene();
 
-        // gamingRoot.getChildren().add(scene);
-        EventHandler buttonHandler = new EventHandler<KeyEvent>() {
+        EventHandler<KeyEvent> buttonHandler = new EventHandler<>() {
 
             public void handle(KeyEvent event) {
 
-                try {
-                    exitGame(stats, gazePlay, currentGame);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                exitGame(stats, gazePlay, currentGame);
                 scene.removeEventHandler(KeyEvent.KEY_PRESSED, this);
                 scene.removeEventHandler(KeyEvent.KEY_RELEASED, this);
             }
         };
-        // scene.addEventHandler(KeyEvent.KEY_PRESSED, buttonHandler);
+
         scene.addEventHandler(KeyEvent.KEY_PRESSED, (key) -> {
             if (key.getCode().getChar().equals(config.getQuitKey())) {
                 scene.addEventHandler(KeyEvent.KEY_RELEASED, buttonHandler);
@@ -147,7 +156,7 @@ public class GameContext extends GraphicalContext<Pane> implements IGameContext 
         leftControlPane.setHgap(5);
         leftControlPane.setVgap(5);
         leftControlPane.setAlignment(Pos.TOP_CENTER);
-        leftControlPane.add(musicControl.createMusicControlPane(config), 0, 0);
+        leftControlPane.add(musicControl.createMusicControlPane(), 0, 0);
         leftControlPane.add(musicControl.createVolumeLevelControlPane(config, gazePlay.getTranslator()), 1, 0);
         leftControlPane.add(animationSpeedRatioControl.createSpeedEffectsPane(config, gazePlay.getTranslator(), gazePlay.getPrimaryScene()), 2, 0);
         leftControlPane.getChildren().forEach(node -> {
@@ -170,22 +179,23 @@ public class GameContext extends GraphicalContext<Pane> implements IGameContext 
 
         EventHandler<Event> homeEvent = e -> {
             root.setCursor(Cursor.WAIT); // Change cursor to wait style
-            try {
-                exitGame(stats, gazePlay, currentGame);
-            } catch (IOException e1) {
-                e1.printStackTrace();
-            }
-            // BackgroundMusicManager.getInstance().pause();
+            exitGame(stats, gazePlay, currentGame);
             root.setCursor(Cursor.DEFAULT); // Change cursor to default style
         };
 
-        HomeButton homeButton = new HomeButton();
+        Dimension2D screenDimension = gazePlay.getCurrentScreenDimensionSupplier().get();
+
+        HomeButton homeButton = new HomeButton(screenDimension);
         homeButton.addEventHandler(MouseEvent.MOUSE_CLICKED, homeEvent);
         return homeButton;
     }
 
-    private void exitGame(@NonNull Stats stats, @NonNull GazePlay gazePlay, @NonNull GameLifeCycle currentGame)
-        throws IOException {
+    void exitGame(@NonNull Stats stats, @NonNull GazePlay gazePlay, @NonNull GameLifeCycle currentGame) {
+
+        if (videoRecordingContext != null) {
+            videoRecordingContext.pointersClear();
+        }
+
         currentGame.dispose();
         ForegroundSoundsUtils.stopSound(); // to stop playing the sound of Bravo
         stats.stop();
@@ -253,9 +263,12 @@ public class GameContext extends GraphicalContext<Pane> implements IGameContext 
             asynchronousStatsPersistTask.run();
         }
 
-        CustomButton continueButton = new CustomButton("data/common/images/continue.png");
+        Dimension2D screenDimension = getGazePlay().getCurrentScreenDimensionSupplier().get();
+
+        CustomButton continueButton = new CustomButton("data/common/images/continue.png", screenDimension);
         continueButton.addEventHandler(MouseEvent.MOUSE_CLICKED, e -> {
             getGazePlay().onGameLaunch(this);
+            stats.reset();
             currentGame.launch();
         });
 
@@ -264,14 +277,13 @@ public class GameContext extends GraphicalContext<Pane> implements IGameContext 
         this.clear();
         getGazePlay().onDisplayStats(statsContext);
 
-        stats.reset();
     }
 
     @Override
     public void playWinTransition(long delay, EventHandler<ActionEvent> onFinishedEventHandler) {
         getChildren().add(bravo);
         bravo.toFront();
-        bravo.setConfetiOnStart(this);
+        bravo.setConfettiOnStart(this);
         bravo.playWinTransition(root, delay, onFinishedEventHandler);
     }
 

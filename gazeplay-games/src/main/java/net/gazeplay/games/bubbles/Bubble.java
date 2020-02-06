@@ -11,7 +11,6 @@ import javafx.scene.paint.Color;
 import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
-import javafx.stage.Screen;
 import javafx.util.Duration;
 import lombok.extern.slf4j.Slf4j;
 import net.gazeplay.GameLifeCycle;
@@ -32,6 +31,11 @@ import java.util.List;
 @Slf4j
 public class Bubble extends Parent implements GameLifeCycle {
 
+    public static final String DIRECTION_TOP = "toTop";
+    public static final String DIRECTION_BOTTOM = "toBottom";
+    public static final String DIRECTION_LEFT = "toLeft";
+    public static final String DIRECTION_RIGHT = "toRight";
+
     private static final int maxRadius = 70;
     private static final int minRadius = 30;
 
@@ -46,35 +50,27 @@ public class Bubble extends Parent implements GameLifeCycle {
 
     private final Stats stats;
 
-    private final boolean image;
-
     private final ImageLibrary imageLibrary;
 
     private final List<Circle> fragments;
 
-    private final EventHandler<Event> enterEvent;
-
-    public static final String DIRECTION_TOP = "toTop";
-    public static final String DIRECTION_BOTTOM = "toBottom";
-    public static final String DIRECTION_LEFT = "toLeft";
-    public static final String DIRECTION_RIGHT = "toRight";
+    private EventHandler<Event> enterEvent;
 
     private final BubblesGameVariant direction;
 
-    public Bubble(IGameContext gameContext, BubbleType type, Stats stats, boolean useBackgroundImage, BubblesGameVariant direction) {
+    public Bubble(final IGameContext gameContext, final BubbleType type, final Stats stats, final boolean useBackgroundImage, final BubblesGameVariant direction) {
         this.gameContext = gameContext;
         this.type = type;
         this.stats = stats;
-        this.image = useBackgroundImage;
         this.direction = direction;
 
         imageLibrary = ImageUtils.createImageLibrary(Utils.getImagesSubDirectory("portraits"));
 
         if (useBackgroundImage) {
 
-            Dimension2D dimension2D = gameContext.getGamePanelDimensionProvider().getDimension2D();
-            Rectangle imageRectangle = new Rectangle(0, 0, dimension2D.getWidth(), dimension2D.getHeight());
-            int i = (gameContext.getConfiguration().isBackgroundWhite()) ? 1 : 0;
+            final Dimension2D dimension2D = gameContext.getGamePanelDimensionProvider().getDimension2D();
+            final Rectangle imageRectangle = new Rectangle(0, 0, dimension2D.getWidth(), dimension2D.getHeight());
+            final int i = (gameContext.getConfiguration().isBackgroundWhite()) ? 1 : 0;
 
             imageRectangle.setFill(new ImagePattern(new Image("data/bubble/images/underwater-treasures.jpg")));
             imageRectangle.setOpacity(1 - i * 0.9);
@@ -115,15 +111,17 @@ public class Bubble extends Parent implements GameLifeCycle {
 
     @Override
     public void dispose() {
-
+        enterEvent = e -> {
+        };
+        this.getChildren().clear();
     }
 
-    private List<Circle> buildFragments(BubbleType bubbleType) {
-        List<Circle> fragments = new ArrayList<>(nbFragments);
+    private List<Circle> buildFragments(final BubbleType bubbleType) {
+        final List<Circle> fragments = new ArrayList<>(nbFragments);
 
         for (int i = 0; i < nbFragments; i++) {
 
-            Circle fragment = new Circle();
+            final Circle fragment = new Circle();
             fragment.setOpacity(1);
             fragment.setRadius(20);
             fragment.setVisible(true);
@@ -142,59 +140,54 @@ public class Bubble extends Parent implements GameLifeCycle {
         return fragments;
     }
 
-    public void explose(double Xcenter, double Ycenter) {
+    public void explose(final double Xcenter, final double Ycenter) {
 
-        Timeline timeline = new Timeline();
-        Timeline timeline2 = new Timeline();
+        final Timeline goToCenterTimeline = new Timeline();
+        final Timeline timeline = new Timeline();
 
         for (int i = 0; i < nbFragments; i++) {
 
-            Circle fragment = fragments.get(i);
+            final Circle fragment = fragments.get(i);
 
-            /*
-             * fragment.setCenterX(C.getCenterX()); fragment.setCenterY(C.getCenterY()); fragment.setOpacity(1);
-             */
-            timeline.getKeyFrames().add(new KeyFrame(new Duration(1),
+            fragment.setCenterX(Xcenter);
+            fragment.setCenterY(Ycenter);
+            fragment.setOpacity(1);
+
+            goToCenterTimeline.getKeyFrames().add(new KeyFrame(new Duration(1),
                 new KeyValue(fragment.centerXProperty(), Xcenter, Interpolator.LINEAR)));
-            timeline.getKeyFrames().add(new KeyFrame(new Duration(1),
+            goToCenterTimeline.getKeyFrames().add(new KeyFrame(new Duration(1),
                 new KeyValue(fragment.centerYProperty(), Ycenter, Interpolator.EASE_OUT)));
-            timeline.getKeyFrames().add(new KeyFrame(new Duration(1), new KeyValue(fragment.opacityProperty(), 1)));
+            goToCenterTimeline.getKeyFrames().add(new KeyFrame(new Duration(1), new KeyValue(fragment.opacityProperty(), 1)));
 
-            double XendValue = Math.random() * Screen.getPrimary().getBounds().getWidth();
-            double YendValue = Math.random() * Screen.getPrimary().getBounds().getHeight();
+            final Dimension2D screenDimension = gameContext.getCurrentScreenDimensionSupplier().get();
+            final double XendValue = Math.random() * screenDimension.getWidth();
+            final double YendValue = Math.random() * screenDimension.getHeight();
 
-            timeline2.getKeyFrames().add(new KeyFrame(new Duration(1000),
+            timeline.getKeyFrames().add(new KeyFrame(new Duration(1000),
                 new KeyValue(fragment.centerXProperty(), XendValue, Interpolator.LINEAR)));
-            timeline2.getKeyFrames().add(new KeyFrame(new Duration(1000),
+            timeline.getKeyFrames().add(new KeyFrame(new Duration(1000),
                 new KeyValue(fragment.centerYProperty(), YendValue, Interpolator.EASE_OUT)));
-            timeline2.getKeyFrames().add(new KeyFrame(new Duration(1000), new KeyValue(fragment.opacityProperty(), 0)));
+            timeline.getKeyFrames().add(new KeyFrame(new Duration(1000), new KeyValue(fragment.opacityProperty(), 0)));
         }
 
-        SequentialTransition sequence = new SequentialTransition();
-        sequence.getChildren().addAll(timeline, timeline2);
+        final SequentialTransition sequence = new SequentialTransition();
+        sequence.getChildren().addAll(goToCenterTimeline, timeline);
         sequence.play();
 
-        // ObservableList<Node> nodes = this.getChildren();
-
-        timeline.setOnFinished(actionEvent -> {
-
-            // nodes.removeAll(fragments);
-        });
-
         if (Math.random() > 0.5) {
-            String soundResource = "data/bubble/sounds/Large-Bubble-SoundBible.com-1084083477.mp3";
+            final String soundResource = "data/bubble/sounds/Large-Bubble-SoundBible.com-1084083477.mp3";
             try {
                 ForegroundSoundsUtils.playSound(soundResource);
-            } catch (Exception e) {
+            } catch (final Exception e) {
 
                 log.warn("file doesn't exist : {}", soundResource);
                 log.warn(e.getMessage());
             }
         } else {
-            String soundResource = "data/bubble/sounds/Blop-Mark_DiAngelo-79054334.mp3";
+            final String soundResource = "data/bubble/sounds/Blop-Mark_DiAngelo-79054334.mp3";
             try {
                 ForegroundSoundsUtils.playSound(soundResource);
-            } catch (Exception e) {
+            } catch (final Exception e) {
 
                 log.warn("file doesn't exist : {}", soundResource);
                 log.warn(e.getMessage());
@@ -203,28 +196,22 @@ public class Bubble extends Parent implements GameLifeCycle {
 
     }
 
-    private void enter(Circle target) {
+    private void enter(final Circle target) {
 
-        double Xcenter = target.getCenterX();
-        double Ycenter = target.getCenterY();
+        final double Xcenter = target.getCenterX();
+        final double Ycenter = target.getCenterY();
 
-        Timeline timeline = new Timeline();
-
-        timeline.getKeyFrames()
-            .add(new KeyFrame(new Duration(1), new KeyValue(target.centerXProperty(), -maxRadius * 5)));
-
-        timeline.play();
-
-        target.removeEventFilter(MouseEvent.ANY, enterEvent);
-
-        target.removeEventFilter(GazeEvent.ANY, enterEvent);
+        gameContext.getGazeDeviceManager().removeEventFilter(target);
+        this.getChildren().remove(target);
 
         explose(Xcenter, Ycenter); // instead of C to avoid wrong position of the explosion
+
+        this.newCircle();
         stats.incNbGoals();
     }
 
     private void newCircle() {
-        Circle circle = buildCircle();
+        final Circle circle = buildCircle();
         circle.toBack();
 
         this.getChildren().add(circle);
@@ -240,31 +227,32 @@ public class Bubble extends Parent implements GameLifeCycle {
 
     private Circle buildCircle() {
 
-        Circle C = new Circle();
+        final Circle C = new Circle();
 
-        double radius = (maxRadius - minRadius) * Math.random() + minRadius;
+        final double radius = (maxRadius - minRadius) * Math.random() + minRadius;
 
         C.setRadius(radius);
 
-        if (type == BubbleType.COLOR)
+        if (type == BubbleType.COLOR) {
             C.setFill(new Color(Math.random(), Math.random(), Math.random(), 0.9));
-        else
+        } else {
             C.setFill(new ImagePattern(imageLibrary.pickRandomImage(), 0, 0, 1, 1, true));
+        }
         stats.incNbShots();
         stats.incNbShots();
 
         return C;
     }
 
-    private void moveCircle(Circle circle) {
-        javafx.geometry.Dimension2D dimension2D = gameContext.getGamePanelDimensionProvider().getDimension2D();
+    private void moveCircle(final Circle circle) {
+        final javafx.geometry.Dimension2D dimension2D = gameContext.getGamePanelDimensionProvider().getDimension2D();
 
         double centerX = 0;
         double centerY = 0;
 
-        double timelength = ((maxTimeLength - minTimeLength) * Math.random() + minTimeLength) * 1000;
+        final double timelength = ((maxTimeLength - minTimeLength) * Math.random() + minTimeLength) * 1000;
 
-        Timeline timeline = new Timeline();
+        final Timeline timeline = new Timeline();
 
 
         if (this.direction == BubblesGameVariant.TOP) {
@@ -272,25 +260,25 @@ public class Bubble extends Parent implements GameLifeCycle {
             centerY = dimension2D.getHeight();
             timeline.getKeyFrames()
                 .add(new KeyFrame(new Duration(timelength),
-                    new KeyValue(circle.centerYProperty(), 0 - maxRadius, Interpolator.EASE_IN)));
-        }else if (this.direction == BubblesGameVariant.BOTTOM){
-                centerX = (dimension2D.getWidth() - maxRadius) * Math.random() + maxRadius;
-                centerY = 0;
-                timeline.getKeyFrames()
-                    .add(new KeyFrame(new Duration(timelength),
-                        new KeyValue(circle.centerYProperty(), dimension2D.getHeight() + maxRadius, Interpolator.EASE_IN)));
-    }else if (this.direction == BubblesGameVariant.RIGHT){
-                centerX = 0;
-                centerY = (dimension2D.getHeight() - maxRadius) * Math.random() + maxRadius;
-                timeline.getKeyFrames()
-                    .add(new KeyFrame(new Duration(timelength),
-                        new KeyValue(circle.centerXProperty(), dimension2D.getWidth() + maxRadius, Interpolator.EASE_IN)));
-}else if (this.direction == BubblesGameVariant.LEFT){
-                centerX = dimension2D.getWidth();
-                centerY = (dimension2D.getHeight() - maxRadius) * Math.random() + maxRadius;
-                timeline.getKeyFrames()
-                    .add(new KeyFrame(new Duration(timelength),
-                        new KeyValue(circle.centerXProperty(), 0 - maxRadius, Interpolator.EASE_IN)));
+                    new KeyValue(circle.centerYProperty(), -maxRadius, Interpolator.EASE_IN)));
+        } else if (this.direction == BubblesGameVariant.BOTTOM) {
+            centerX = (dimension2D.getWidth() - maxRadius) * Math.random() + maxRadius;
+            centerY = 0;
+            timeline.getKeyFrames()
+                .add(new KeyFrame(new Duration(timelength),
+                    new KeyValue(circle.centerYProperty(), dimension2D.getHeight() + maxRadius, Interpolator.EASE_IN)));
+        } else if (this.direction == BubblesGameVariant.RIGHT) {
+            centerX = 0;
+            centerY = (dimension2D.getHeight() - maxRadius) * Math.random() + maxRadius;
+            timeline.getKeyFrames()
+                .add(new KeyFrame(new Duration(timelength),
+                    new KeyValue(circle.centerXProperty(), dimension2D.getWidth() + maxRadius, Interpolator.EASE_IN)));
+        } else if (this.direction == BubblesGameVariant.LEFT) {
+            centerX = dimension2D.getWidth();
+            centerY = (dimension2D.getHeight() - maxRadius) * Math.random() + maxRadius;
+            timeline.getKeyFrames()
+                .add(new KeyFrame(new Duration(timelength),
+                    new KeyValue(circle.centerXProperty(), -maxRadius, Interpolator.EASE_IN)));
         }
 
 
@@ -298,9 +286,11 @@ public class Bubble extends Parent implements GameLifeCycle {
         circle.setCenterY(centerY);
 
         timeline.setOnFinished(actionEvent -> {
-            gameContext.getGazeDeviceManager().removeEventFilter(circle);
-            this.getChildren().remove(circle);
-            newCircle();
+            if (this.getChildren().contains(circle)) {
+                gameContext.getGazeDeviceManager().removeEventFilter(circle);
+                this.getChildren().remove(circle);
+                newCircle();
+            }
         });
 
         timeline.rateProperty().bind(gameContext.getAnimationSpeedRatioSource().getSpeedRatioProperty());

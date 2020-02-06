@@ -6,13 +6,11 @@ import javafx.animation.Timeline;
 import javafx.collections.ObservableList;
 import javafx.event.Event;
 import javafx.event.EventHandler;
+import javafx.geometry.Dimension2D;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.MenuBar;
-import javafx.scene.control.ProgressIndicator;
-import javafx.scene.control.ScrollPane;
+import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -32,6 +30,7 @@ import net.gazeplay.commons.ui.I18NButton;
 import net.gazeplay.commons.ui.I18NText;
 import net.gazeplay.commons.ui.Translator;
 import net.gazeplay.commons.utils.ConfigurationButton;
+import net.gazeplay.commons.utils.ConfigurationButtonFactory;
 import net.gazeplay.commons.utils.ControlPanelConfigurator;
 import net.gazeplay.commons.utils.CustomButton;
 import net.gazeplay.commons.utils.games.LicenseUtils;
@@ -65,10 +64,12 @@ public class HomeMenuScreen extends GraphicalContext<BorderPane> {
         this.gazeDeviceManager = gazeDeviceManager;
         this.gameMenuFactory = gameMenuFactory;
 
-        CustomButton exitButton = createExitButton();
-        CustomButton logoutButton = createLogoutButton(gazePlay);
+        Dimension2D screenDimension = gazePlay.getCurrentScreenDimensionSupplier().get();
 
-        ConfigurationButton configurationButton = ConfigurationButton.createConfigurationButton(gazePlay);
+        CustomButton exitButton = createExitButton(screenDimension);
+        CustomButton logoutButton = createLogoutButton(gazePlay, screenDimension);
+
+        ConfigurationButton configurationButton = ConfigurationButtonFactory.createConfigurationButton(gazePlay);
 
         Configuration config = ActiveConfigurationContext.getInstance();
 
@@ -249,39 +250,76 @@ public class HomeMenuScreen extends GraphicalContext<BorderPane> {
         return gameCardsList;
     }
 
+    private static void filterGames(FlowPane choicePanel, List<Node> completeGameCardsList, Configuration config, String searchText, Translator translator) {
+        List<Node> filteredList = completeGameCardsList.stream()
+            .filter(node -> {
+                GameButtonPane gameButtonPane = (GameButtonPane) node;
+                return (new GameCardVisiblePredicate(config)).test(node) &&
+                    translator.translate(gameButtonPane.getGameSpec().getGameSummary().getNameCode()).toLowerCase().contains(searchText.toLowerCase());
+            })
+            .collect(Collectors.toList());
+
+        choicePanel.getChildren().clear();
+        choicePanel.getChildren().addAll(filteredList);
+    }
+
     private static void filterGames(FlowPane choicePanel, List<Node> completeGameCardsList, Configuration config) {
         Predicate<Node> gameCardPredicate = new GameCardVisiblePredicate(config);
         List<Node> filteredList = completeGameCardsList.stream()
             .filter(gameCardPredicate)
             .collect(Collectors.toList());
-        //
+
         choicePanel.getChildren().clear();
         choicePanel.getChildren().addAll(filteredList);
     }
 
+
+    private TextField buildSearchBar(Configuration config, Translator translator) {
+        TextField gameSearchBar = new TextField();
+
+        gameSearchBar.textProperty().addListener((obs, oldValue, newValue) -> {
+            log.debug(newValue);
+            filterGames(choicePanel, gameCardsList, config, newValue, translator);
+        });
+
+        return gameSearchBar;
+    }
+
     private HBox buildFilterByCategory(Configuration config, Translator translator) {
+
+
+        TextField searchBar = buildSearchBar(config, translator);
+        searchBar.maxWidthProperty().bind(root.widthProperty().multiply(1d / 4d));
+        searchBar.prefWidthProperty().bind(root.widthProperty().multiply(1d / 4d));
+        searchBar.minWidthProperty().bind(root.widthProperty().multiply(1d / 4d));
+
         List<CheckBox> allCheckBoxes = new ArrayList<>();
         for (GameCategories.Category category : GameCategories.Category.values()) {
-            CheckBox checkBox = buildCategoryCheckBox(category, config, translator, choicePanel, gameCardsList);
+            CheckBox checkBox = buildCategoryCheckBox(category, config, translator, choicePanel, gameCardsList, searchBar);
             allCheckBoxes.add(checkBox);
         }
 
         HBox categoryFilters = new HBox(10);
         categoryFilters.setAlignment(Pos.CENTER);
         categoryFilters.setPadding(new Insets(15, 12, 15, 12));
+        categoryFilters.getChildren().add(searchBar);
         categoryFilters.getChildren().addAll(allCheckBoxes);
 
         return categoryFilters;
     }
 
-    private CustomButton createExitButton() {
-        CustomButton exitButton = new CustomButton("data/common/images/power-off.png");
+    private boolean isFavorite(GameSpec g, Configuration configuration) {
+        return configuration.getFavoriteGamesProperty().contains(g.getGameSummary().getNameCode());
+    }
+
+    private CustomButton createExitButton(Dimension2D screenDimension) {
+        CustomButton exitButton = new CustomButton("data/common/images/power-off.png", screenDimension);
         exitButton.addEventHandler(MouseEvent.MOUSE_CLICKED, (EventHandler<Event>) e -> System.exit(0));
         return exitButton;
     }
 
-    private CustomButton createLogoutButton(GazePlay gazePlay) {
-        CustomButton logoutButton = new CustomButton("data/common/images/logout.png");
+    private CustomButton createLogoutButton(GazePlay gazePlay, Dimension2D screenDimension) {
+        CustomButton logoutButton = new CustomButton("data/common/images/logout.png", screenDimension);
         logoutButton.addEventHandler(MouseEvent.MOUSE_CLICKED, (EventHandler<Event>) e -> gazePlay.goToUserPage());
         return logoutButton;
     }
@@ -291,7 +329,8 @@ public class HomeMenuScreen extends GraphicalContext<BorderPane> {
         Configuration config,
         Translator translator,
         FlowPane choicePanel,
-        List<Node> gameCardsList
+        List<Node> gameCardsList,
+        TextField searchBar
     ) {
         I18NText label = new I18NText(translator, category.getGameCategory());
         CheckBox categoryCheckbox = new CheckBox(label.getText());
@@ -304,9 +343,7 @@ public class HomeMenuScreen extends GraphicalContext<BorderPane> {
             } else {
                 config.getHiddenCategoriesProperty().add(category.getGameCategory());
             }
-            filterGames(choicePanel, gameCardsList, config);
-            config.saveConfigIgnoringExceptions();
-
+            filterGames(choicePanel, gameCardsList, config, searchBar.getText(), translator);
         });
         return categoryCheckbox;
     }
@@ -325,5 +362,4 @@ public class HomeMenuScreen extends GraphicalContext<BorderPane> {
         }
 
     }
-
 }

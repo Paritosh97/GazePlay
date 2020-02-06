@@ -8,12 +8,10 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Polygon;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import lombok.Getter;
@@ -25,8 +23,6 @@ import static net.gazeplay.games.colors.ColorToolBox.COLORS_IMAGES_PATH;
 
 @Slf4j
 public class CustomColorPicker extends Pane {
-
-    final GridPane colorGrid;
 
     public static final Color[] COLOR_LIST = {Color.BURLYWOOD, Color.DARKCYAN, Color.BLUEVIOLET, Color.BROWN,
         Color.CADETBLUE, Color.DARKGRAY, Color.DARKORANGE, Color.GOLD, Color.LIMEGREEN, Color.ROYALBLUE,
@@ -41,21 +37,14 @@ public class CustomColorPicker extends Pane {
     // BY</a></div>
     public static final String CLOSE_CURSTOM_PANEL_IMAGE_PATH = COLORS_IMAGES_PATH + "error.png";
 
+    final GridPane colorGrid;
+
     @Getter
     private ColorBox selectedColor;
-
-    private final ColorBox representingBox;
-
-    private final AbstractGazeIndicator progressIndicator;
-
-    private final Stage dialog;
 
     public CustomColorPicker(final IGameContext gameContext, final Pane root, final ColorToolBox toolBox, final ColorBox representingBox,
                              final Stage stage) {
         super();
-
-        this.representingBox = representingBox;
-        this.dialog = stage;
 
         this.getStyleClass().add("bg-colored");
 
@@ -69,14 +58,14 @@ public class CustomColorPicker extends Pane {
         colorGrid.setVgap(5);
         colorGrid.setHgap(5);
 
-        ToggleGroup colorGroup = new ToggleGroup();
+        final ToggleGroup colorGroup = new ToggleGroup();
 
-        progressIndicator = new GazeFollowerIndicator(gameContext, this);
+        final AbstractGazeIndicator progressIndicator = new GazeFollowerIndicator(gameContext, this);
 
         for (int i = 0; i < COLOR_LIST.length / NB_COLOR_PER_ROW; ++i) {
 
             for (int j = 0; j < NB_COLOR_PER_ROW; ++j) {
-                ColorBox colorBox = new CustomColorBox(gameContext, COLOR_LIST[i * NB_COLOR_PER_ROW + j], root, toolBox, colorGroup,
+                final ColorBox colorBox = new CustomColorBox(gameContext, COLOR_LIST[i * NB_COLOR_PER_ROW + j], root, toolBox, colorGroup,
                     representingBox);
                 colorBox.setProgressIndicator(progressIndicator);
 
@@ -88,14 +77,14 @@ public class CustomColorPicker extends Pane {
         mainNode.getChildren().add(colorGrid);
 
         // Send a close request on the window
-        EventHandler<ActionEvent> closeEvent = (ActionEvent event) -> stage.fireEvent(new WindowEvent(stage, WindowEvent.WINDOW_CLOSE_REQUEST));
+        final EventHandler<ActionEvent> closeEvent = (ActionEvent event) -> stage.fireEvent(new WindowEvent(stage, WindowEvent.WINDOW_CLOSE_REQUEST));
 
         // Close button
         Image buttonImg = null;
         try {
             buttonImg = new Image(CLOSE_CURSTOM_PANEL_IMAGE_PATH, COLORIZE_BUTTONS_SIZE_PX, COLORIZE_BUTTONS_SIZE_PX,
                 false, true);
-        } catch (IllegalArgumentException e) {
+        } catch (final IllegalArgumentException e) {
             log.warn(e.toString() + " : " + CLOSE_CURSTOM_PANEL_IMAGE_PATH);
         }
 
@@ -111,7 +100,7 @@ public class CustomColorPicker extends Pane {
         closeButton.setOnAction(closeEvent);
         mainNode.getChildren().add(closeButton);
 
-        AbstractGazeIndicator closeProgressIndic = new GazeFollowerIndicator(gameContext, this);
+        final AbstractGazeIndicator closeProgressIndic = new GazeFollowerIndicator(gameContext, this);
         closeProgressIndic.setOnFinish(closeEvent);
         closeProgressIndic.addNodeToListen(closeButton,
             toolBox.getColorsGame().getGameContext().getGazeDeviceManager());

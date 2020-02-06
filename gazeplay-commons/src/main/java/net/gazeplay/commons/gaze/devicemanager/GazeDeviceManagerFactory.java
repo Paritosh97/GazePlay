@@ -1,24 +1,42 @@
 package net.gazeplay.commons.gaze.devicemanager;
 
-import lombok.Getter;
+import javafx.geometry.Dimension2D;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.gazeplay.commons.configuration.ActiveConfigurationContext;
 import net.gazeplay.commons.configuration.Configuration;
 import net.gazeplay.commons.gaze.EyeTracker;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
-/**
- * Created by schwab on 16/08/2016.
- */
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+
+@Component
 @Slf4j
 public class GazeDeviceManagerFactory {
 
-    @Getter
-    private static final GazeDeviceManagerFactory instance = new GazeDeviceManagerFactory();
+    private final AtomicReference<GazeDeviceManager> currentInstanceReference = new AtomicReference<>();
 
-    private GazeDeviceManagerFactory() {
+    @Autowired
+    @Setter
+    private Supplier<Dimension2D> currentScreenDimensionSupplier;
+
+    public GazeDeviceManagerFactory() {
     }
 
-    public GazeDeviceManager createNewGazeListener() {
+    public synchronized GazeDeviceManager get() {
+        GazeDeviceManager gazeDeviceManager = currentInstanceReference.get();
+        if (gazeDeviceManager != null) {
+            gazeDeviceManager.clear();
+            gazeDeviceManager.destroy();
+        }
+        gazeDeviceManager = create();
+        currentInstanceReference.set(gazeDeviceManager);
+        return gazeDeviceManager;
+    }
+
+    private GazeDeviceManager create() {
         final Configuration config = ActiveConfigurationContext.getInstance();
 
         final String eyetrackerConfigValue = config.getEyeTracker();
@@ -28,27 +46,27 @@ public class GazeDeviceManagerFactory {
         final GazeDeviceManager gazeDeviceManager;
 
         switch (eyeTracker) {
-        case tobii_eyeX_4C:
-            gazeDeviceManager = new TobiiGazeDeviceManager();
-            break;
-        case eyetribe:
-            gazeDeviceManager = new EyeTribeGazeDeviceManager();
-            break;
-        default:
-            gazeDeviceManager = new AbstractGazeDeviceManager() {
-                @Override
-                public void init() {
-                }
+            case tobii_eyeX_4C:
+                gazeDeviceManager = new TobiiGazeDeviceManager();
+                break;
+            case eyetribe:
+                gazeDeviceManager = new EyeTribeGazeDeviceManager();
+                break;
+            default:
+                gazeDeviceManager = new AbstractGazeDeviceManager() {
+                    @Override
+                    public void init(final Supplier<Dimension2D> currentScreenDimensionSupplier) {
+                    }
 
-                @Override
-                public void destroy() {
+                    @Override
+                    public void destroy() {
 
-                }
+                    }
 
-            };
+                };
         }
 
-        gazeDeviceManager.init();
+        gazeDeviceManager.init(currentScreenDimensionSupplier);
         return gazeDeviceManager;
     }
 
